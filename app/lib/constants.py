@@ -1,0 +1,3 @@
+GROQ_MODEL = "llama-3.1-8b-instant"
+RESPONSE_STATUS_SUCCESS = "success"
+RESPONSE_STATUS_ERROR = "error"
