@@ -8,9 +8,14 @@ project_root = Path(__file__).resolve().parents[1]
 load_dotenv(dotenv_path=project_root / ".env")
 
 from app.lib.response import build_response
+from app.lib.database import create_tables
+from app.lib.models import Conversation, ChatMessage  # Import models for SQLAlchemy
 from app.routes.chat import router as chat_router
 
 app = FastAPI()
+
+# Create database tables on startup
+create_tables()
 
 # Allow all origins for development; restrict in production
 app.add_middleware(
