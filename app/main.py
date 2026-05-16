@@ -14,17 +14,17 @@ from app.routes.chat import router as chat_router
 
 app = FastAPI()
 
-# Create database tables on startup
-create_tables()
-
-# Allow all origins for development; restrict in production
+# Add CORS middleware FIRST before other middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001", "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Create database tables on startup
+create_tables()
 
 @app.get("/")
 def root():

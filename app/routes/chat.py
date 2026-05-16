@@ -20,8 +20,19 @@ router = APIRouter()
 
 def get_groq_client():
     """Lazy load Groq client"""
+    import sys
     from groq import Groq
-    return Groq(api_key=os.getenv("GROQ_API_KEY"))
+    try:
+        # Try standard initialization
+        return Groq(api_key=os.getenv("GROQ_API_KEY"))
+    except TypeError as e:
+        # Handle compatibility issues with httpx
+        if "proxies" in str(e):
+            # If proxies argument is the issue, try with explicit http_client
+            import httpx
+            client = httpx.Client(timeout=None)
+            return Groq(api_key=os.getenv("GROQ_API_KEY"), http_client=client)
+        raise
 
 
 # ============= CONVERSATION ENDPOINTS =============
@@ -103,9 +114,9 @@ def send_message_stream(
         ChatMessage.conversation_id == conversation_id
     ).order_by(ChatMessage.created_at.asc()).all()
 
-    # Format messages for Groq API
+    # Format messages for Groq API (convert "bot" role to "assistant" for Groq compatibility)
     formatted_messages = [
-        {"role": msg.role, "content": msg.content} for msg in all_messages
+        {"role": "assistant" if msg.role == "bot" else msg.role, "content": msg.content} for msg in all_messages
     ]
 
     # Call Groq API
