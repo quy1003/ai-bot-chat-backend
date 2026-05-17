@@ -35,6 +35,30 @@ def get_groq_client():
         raise
 
 
+def generate_conversation_title(message: str) -> str:
+    """Generate a conversation title from the first user message using Groq"""
+    try:
+        client = get_groq_client()
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Generate a short conversation title (max 50 characters) from this message. Only respond with the title, nothing else.\n\nMessage: {message}"
+                }
+            ],
+            temperature=0.7,
+            max_tokens=100
+        )
+        title = response.choices[0].message.content.strip()
+        # Ensure title is not too long
+        return title[:50] if len(title) > 50 else title
+    except Exception as e:
+        print(f"Error generating title: {e}")
+        # Fallback: use first 50 chars of message
+        return message[:50] + "..." if len(message) > 50 else message
+
+
 # ============= CONVERSATION ENDPOINTS =============
 
 
@@ -100,6 +124,12 @@ def send_message_stream(
     if not conversation:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
 
+    # Check if this is the first message in conversation
+    message_count_before = db.query(ChatMessage).filter(
+        ChatMessage.conversation_id == conversation_id
+    ).count()
+    is_first_message = message_count_before == 0
+
     # Save user message
     user_message = ChatMessage(
         conversation_id=conversation_id,
@@ -108,6 +138,15 @@ def send_message_stream(
     )
     db.add(user_message)
     db.commit()
+
+    # If this is the first message, generate a title for the conversation
+    if is_first_message:
+        try:
+            generated_title = generate_conversation_title(request.message)
+            conversation.title = generated_title
+            db.commit()
+        except Exception as e:
+            print(f"Error updating conversation title: {e}")
 
     # Get all messages from this conversation for context
     all_messages = db.query(ChatMessage).filter(
